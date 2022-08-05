@@ -1,5 +1,6 @@
 import random
 import sys
+from typing import Tuple
 import pygame
 from pygame.locals import *
 import time
@@ -81,137 +82,140 @@ class TargetSprite(pygame.sprite.Sprite):
     def collide_pos(self, pos) -> bool:
         return self.target_rect.collidepoint(pos)
 
-############################
-### メイン関数 
-############################
-def main():
+class GazeTask(object):
+    def __init__(self) -> None:
+        # 画面初期化
+        pygame.init()
+        self.surface = pygame.display.set_mode(SURFACE.size)
+        pygame.display.set_caption("GAZE TASK")              # タイトルバーに表示する文字
 
-    ### 画面初期化
-    pygame.init()
-    surface = pygame.display.set_mode(SURFACE.size)
-    pygame.display.set_caption("GAZE TASK")              # タイトルバーに表示する文字
+        # スプライトを作成
+        self.start_point = BasicSprite("blue.png", SURFACE.centerx, SURFACE.centery, (30, 30))
+        self.gaze = BasicSprite("eye.png", 200, 200, (100, 50))
+        self.target = TargetSprite("white.png", (20, 20), SURFACE.size)
 
-    ### スプライトを作成
-    start_point = BasicSprite("blue.png", SURFACE.centerx, SURFACE.centery, (30, 30))
-    gaze = BasicSprite("eye.png", 200, 200, (100, 50))
-    target = TargetSprite("white.png", (20, 20), SURFACE.size)
+        self.font = pygame.font.Font('IPAexfont00401\ipaexg.ttf', 20)               # フォントの設定
 
-    font = pygame.font.Font('IPAexfont00401\ipaexg.ttf', 20)               # フォントの設定
+        # 時間オブジェクト生成
+        self.clock = pygame.time.Clock()
 
-    ### 時間オブジェクト生成
-    clock = pygame.time.Clock()
+        self.score = 0
+        self.assist = False
 
-    reward = 0
-    (x, y) = (0, 0)
-    game_start = False
-    time_past = 0.0
-    pause_time = 0.0
-    assist = False
+    def reset(self):
+        self.game_start = False
+        self.time_start = 0.0
+        self.time_past = 0.0
 
-    ### 無限ループ
-    while True:
+    def render(self, action) -> Tuple[float, bool]:
+        (x, y) = action
+        reward = 0
+        done = False
 
-        ### フレームレート設定
-        clock.tick(F_RATE)
+        # フレームレート設定
+        self.clock.tick(F_RATE)
 
-        ### 背景色設定
-        surface.fill((0,0,0))
+        # 背景色設定
+        self.surface.fill((0,0,0))
 
-        if (game_start):
-            time_past = time.perf_counter() - time_start
-        elif (start_point.collide_pos((x, y))):
-            game_start = True
-            time_start = time.perf_counter()
-            target.set_direction()
+        if (self.game_start):
+            self.time_past = time.perf_counter() - self.time_start
+        elif (self.start_point.collide_pos((x, y))):
+            self.game_start = True
+            self.time_start = time.perf_counter()
+            self.target.set_direction()
         else:
-            txt_start = font.render("視線（マウスカーソル）を注視点に合わせたらスタートです。", True, RGB_WHITE)
-            surface.blit(txt_start, [SURFACE.centerx - txt_start.get_width() * 0.5, SURFACE.centery - 50])
+            txt_start = self.font.render("視線（マウスカーソル）を注視点に合わせたらスタートです。", True, RGB_WHITE)
+            self.surface.blit(txt_start, [SURFACE.centerx - txt_start.get_width() * 0.5, SURFACE.centery - 50])
 
         # 注視期間 (0.0 ~ 1.0)
 
         # 手がかり刺激期間 (1.0 ~ 1.5)
-        if (1.0 <= time_past and time_past <= 1.5):
-            target.random_draw(surface)
+        if (1.0 <= self.time_past and self.time_past <= 1.5):
+            self.target.random_draw(self.surface)
 
         # 遅延期間 (1.5 ~ 4.5)
 
         # 注視点表示 (~ 4.5)
-        if (time_past < 4.5):
-            start_point.draw(surface)
+        if (self.time_past < 4.5):
+            self.start_point.draw(self.surface)
 
-            if (game_start and not start_point.collide_pos((x, y))):
-                txt_over = font.render("目を逸らしました", True, RGB_WHITE)
-                surface.blit(txt_over, [SURFACE.centerx - txt_over.get_width() * 0.5, SURFACE.centery - 50])
-                pause_time = 2.5
+            if (self.game_start and not self.start_point.collide_pos((x, y))):
+                txt_over = self.font.render("目を逸らしました", True, RGB_WHITE)
+                self.surface.blit(txt_over, [SURFACE.centerx - txt_over.get_width() * 0.5, SURFACE.centery - 50])
+                done = True
                 
         # 終了
-        elif (time_past > 5.0):
-            txt_over = font.render("タイムオーバー", True, RGB_WHITE)
-            surface.blit(txt_over, [SURFACE.centerx - txt_over.get_width() * 0.5, SURFACE.centery - 50])
-            pause_time = 2.5
+        elif (self.time_past > 5.0):
+            txt_over = self.font.render("タイムオーバー", True, RGB_WHITE)
+            self.surface.blit(txt_over, [SURFACE.centerx - txt_over.get_width() * 0.5, SURFACE.centery - 50])
+            done = True
 
         # 反応期間 (4.5 ~ 5.0)
         else:
-            if (target.collide_pos((x, y))):
-                txt_reward = font.render("報酬 +1", True, RGB_WHITE)
-                surface.blit(txt_reward, [SURFACE.centerx - txt_reward.get_width() * 0.5, SURFACE.centery - 50])
-                reward += 1
-                pause_time = 2.5
+            if (self.target.collide_pos((x, y))):
+                txt_reward = self.font.render("報酬 +1", True, RGB_WHITE)
+                self.surface.blit(txt_reward, [SURFACE.centerx - txt_reward.get_width() * 0.5, SURFACE.centery - 50])
+                reward = 1
+                done = True
 
         # 視線
-        gaze.move(surface, (x, y))
+        self.gaze.move(self.surface, (x, y))
 
-        txt_score = font.render("SCORE: " + str(reward), True, RGB_WHITE)
-        surface.blit(txt_score, [440, 0])
+        # スコア表示
+        self.score += reward
+        txt_score = self.font.render("SCORE: " + str(self.score), True, RGB_WHITE)
+        self.surface.blit(txt_score, [440, 0])
 
-        if (assist):
-            txt_time = font.render("{:.1f}".format(time_past), True, RGB_WHITE)
-            surface.blit(txt_time, [0, 0])
+        if (self.assist):
+            txt_time = self.font.render("{:.1f}".format(self.time_past), True, RGB_WHITE)
+            self.surface.blit(txt_time, [0, 0])
 
-            pygame.draw.line(surface, RGB_WHITE, (0, 220), (660, 220), 1)
-            pygame.draw.line(surface, RGB_WHITE, (0, 440), (660, 440), 1)
-            pygame.draw.line(surface, RGB_WHITE, (220, 0), (220, 660), 1)
-            pygame.draw.line(surface, RGB_WHITE, (440, 0), (440, 660), 1)
+            pygame.draw.line(self.surface, RGB_WHITE, (0, 220), (660, 220), 1)
+            pygame.draw.line(self.surface, RGB_WHITE, (0, 440), (660, 440), 1)
+            pygame.draw.line(self.surface, RGB_WHITE, (220, 0), (220, 660), 1)
+            pygame.draw.line(self.surface, RGB_WHITE, (440, 0), (440, 660), 1)
 
-        ### 画面更新
+        # 画面更新
         pygame.display.update()
 
+        return [reward, done]
+
+    def exit(self):
+        pygame.quit()
+        sys.exit()
+
+
+def main():
+    gaze_task = GazeTask()
+    gaze_task.reset()
+    (x, y) = (0, 0)
+
+    while True:
+        [reward, done] = gaze_task.render((x, y))
+
         # 次のゲーム
-        if (pause_time > 0.0):
-            time.sleep(pause_time)
+        if (done):
+            time.sleep(2.5)
 
             (x, y) = (0, 0)
-            game_start = False
-            time_past = 0.0
-            pause_time = 0.0
+            gaze_task.reset()
 
-        ### イベント処理
+        # イベント処理
         for event in pygame.event.get():
             if (event.type == MOUSEMOTION):
                 x, y = event.pos
-            ### 終了処理
+            # 終了処理
             if event.type == QUIT:
-                exit()
+                gaze_task.exit()
             if event.type == KEYDOWN:
                 if event.key == K_ESCAPE:
-                    exit()
+                    gaze_task.exit()
                 elif event.key == K_a:
-                    if (assist):
-                        assist = False
+                    if (gaze_task.assist):
+                        gaze_task.assist = False
                     else:
-                        assist = True
+                        gaze_task.assist = True
 
-############################
-### 終了関数
-############################
-def exit():
-    pygame.quit()
-    sys.exit()
-
-############################
-### メイン関数呼び出し
-############################
 if __name__ == "__main__":
-
-    ### 処理開始
     main()
