@@ -33,7 +33,8 @@ class BasicSprite(pygame.sprite.Sprite):
         surface.blit(self.image, self.rect)
 
     def move(self, surface: pygame.Surface, pos):
-        surface.blit(self.image, (pos[0] - self.w * 0.5, pos[1] - self.h * 0.5))
+        self.rect.x = pos[0] - self.w * 0.5
+        self.rect.y = pos[1] - self.h * 0.5
     
     def collide_pos(self, pos) -> bool:
         return self.rect.collidepoint(pos)
@@ -101,69 +102,42 @@ class GazeTask(object):
 
         self.score = 0
         self.assist = False
+        self._motion_init()
 
     def reset(self):
         self.game_start = False
         self.time_start = 0.0
         self.time_past = 0.0
 
-    def render(self, action) -> Tuple[float, bool]:
-        (x, y) = action
-        reward = 0
-        done = False
+    def _motion_init(self):
+        self.obs_startp = 0
+        self.obs_targetp = 0
+        self.reward = 0
+        self.done = False
+        self.text = ""
 
+    def draw(self):
         # フレームレート設定
         self.clock.tick(F_RATE)
 
         # 背景色設定
         self.surface.fill((0,0,0))
 
-        if (self.game_start):
-            self.time_past = time.perf_counter() - self.time_start
-        elif (self.start_point.collide_pos((x, y))):
-            self.game_start = True
-            self.time_start = time.perf_counter()
-            self.target.set_direction()
-        else:
+        if (not self.game_start):
             txt_start = self.font.render("視線（マウスカーソル）を注視点に合わせたらスタートです。", True, RGB_WHITE)
             self.surface.blit(txt_start, [SURFACE.centerx - txt_start.get_width() * 0.5, SURFACE.centery - 50])
 
-        # 注視期間 (0.0 ~ 1.0)
-
-        # 手がかり刺激期間 (1.0 ~ 1.5)
-        if (1.0 <= self.time_past and self.time_past <= 1.5):
-            self.target.random_draw(self.surface)
-
-        # 遅延期間 (1.5 ~ 4.5)
-
-        # 注視点表示 (~ 4.5)
-        if (self.time_past < 4.5):
+        if (self.obs_startp > 0):
             self.start_point.draw(self.surface)
 
-            if (self.game_start and not self.start_point.collide_pos((x, y))):
-                txt_over = self.font.render("目を逸らしました", True, RGB_WHITE)
-                self.surface.blit(txt_over, [SURFACE.centerx - txt_over.get_width() * 0.5, SURFACE.centery - 50])
-                done = True
-                
-        # 終了
-        elif (self.time_past > 5.0):
-            txt_over = self.font.render("タイムオーバー", True, RGB_WHITE)
-            self.surface.blit(txt_over, [SURFACE.centerx - txt_over.get_width() * 0.5, SURFACE.centery - 50])
-            done = True
+        if (self.obs_targetp > 0):
+            self.target.random_draw(self.surface)
 
-        # 反応期間 (4.5 ~ 5.0)
-        else:
-            if (self.target.collide_pos((x, y))):
-                txt_reward = self.font.render("報酬 +1", True, RGB_WHITE)
-                self.surface.blit(txt_reward, [SURFACE.centerx - txt_reward.get_width() * 0.5, SURFACE.centery - 50])
-                reward = 1
-                done = True
-
-        # 視線
-        self.gaze.move(self.surface, (x, y))
+        if (self.done):
+            txt_done = self.font.render(self.text, True, RGB_WHITE)
+            self.surface.blit(txt_done, [SURFACE.centerx - txt_done.get_width() * 0.5, SURFACE.centery - 50])
 
         # スコア表示
-        self.score += reward
         txt_score = self.font.render("SCORE: " + str(self.score), True, RGB_WHITE)
         self.surface.blit(txt_score, [440, 0])
 
@@ -176,10 +150,68 @@ class GazeTask(object):
             pygame.draw.line(self.surface, RGB_WHITE, (220, 0), (220, 660), 1)
             pygame.draw.line(self.surface, RGB_WHITE, (440, 0), (440, 660), 1)
 
+        # 視線表示
+        self.gaze.draw(self.surface)
+
         # 画面更新
         pygame.display.update()
 
-        return [reward, done]
+        if (self.done):
+            time.sleep(2.5)
+
+    def motion(self, action) -> Tuple[int, int, float, bool]:
+        """
+        Retuens:
+            observation start point  [観察] 注視点表示 0, 1 (0: 表示なし)
+            observation target point [観察] 手掛かり刺激表示 0 ~ 8 (0: 表示なし)
+            reward                   報酬
+            done                     終了フラグ
+        """
+        (x, y) = action
+        self._motion_init()
+
+        if (self.game_start):
+            self.time_past = time.perf_counter() - self.time_start
+        elif (self.start_point.collide_pos((x, y))):
+            self.game_start = True
+            self.time_start = time.perf_counter()
+            self.target.set_direction()
+
+        # 注視期間 (0.0 ~ 1.0)
+
+        # 手がかり刺激期間 (1.0 ~ 1.5)
+        if (1.0 <= self.time_past and self.time_past <= 1.5):
+            self.obs_targetp = self.target.direction
+
+        # 遅延期間 (1.5 ~ 4.5)
+
+        # 注視点表示 (~ 4.5)
+        if (self.time_past < 4.5):
+            self.obs_startp = 1
+
+            if (self.game_start and not self.start_point.collide_pos((x, y))):
+                self.text = "目を逸らしました"
+                self.done = True
+                
+        # 終了
+        elif (self.time_past > 5.0):
+            self.text = "タイムオーバー"
+            self.done = True
+
+        # 反応期間 (4.5 ~ 5.0)
+        else:
+            if (self.target.collide_pos((x, y))):
+                self.text = "報酬 +1"
+                self.reward = 1
+                self.done = True
+
+        # 視線移動
+        self.gaze.move(self.surface, (x, y))
+
+        # スコア（報酬計）
+        self.score += self.reward
+
+        return [self.obs_startp, self.obs_targetp, self.reward, self.done]
 
     def exit(self):
         pygame.quit()
@@ -192,14 +224,14 @@ def main():
     (x, y) = (0, 0)
 
     while True:
-        [reward, done] = gaze_task.render((x, y))
+        [obs_s, obs_t, reward, done] = gaze_task.motion((x, y))
+
+        gaze_task.draw()
 
         # 次のゲーム
         if (done):
-            time.sleep(2.5)
-
-            (x, y) = (0, 0)
             gaze_task.reset()
+            (x, y) = (0, 0)
 
         # イベント処理
         for event in pygame.event.get():
