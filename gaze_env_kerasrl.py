@@ -14,9 +14,9 @@ class GazeEnv(gym.Env):
     def __init__(self):
         self.task = gaze_task.GazeTask()
 
-        self.action_space = gym.spaces.Box(low=np.int32([0, 0, 0]),high=np.int32([3, 3, 3]))
-        self.observation_space = gym.spaces.Box(low=np.int32([0, 0, 0]),high=np.int32([3, 3, 3]))
-        self.reward_range = (-1,1)
+        self.action_space = gym.spaces.Discrete(10)
+        self.observation_space = gym.spaces.Box(low=np.int32([0, 0]),high=np.int32([9, 2]))
+        self.reward_range = (-1,10)
 
         self.act_to_pos = { 0: (0, 0),
                             1: (110, 110), 2: (330, 110), 3: (550, 110),
@@ -27,23 +27,26 @@ class GazeEnv(gym.Env):
     def reset(self):
         self.task.reset()
 
-        self.observation = np.int32([0, 0, 0, 0, 0, 0, 0, 0, 0])
+        self.observation = np.int32([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
         return self.observation
 
     def render(self, mode):
         self.task.draw()
 
     def step(self, act):
-        self.task.motion(self.act_to_pos[act])
+        [obs_s, obs_t, reward, done] = self.task.motion(self.act_to_pos[act])
 
-        self.observation[2] += np.float32(act*2-1)/20
-        self.observation[0] += math.sin(self.observation[2])*6
-        self.observation[1] -= math.cos(self.observation[2])*6
-        if self.observation[0] >= 400 or self.observation[1] <= 0 or self.observation[1] >= 300 or self.observation[2] <= 0 or self.observation[2] >= math.pi:
-            return self.observation,np.float32(-1),True,{}                      #失敗（画面外に出た、船が真上か真下を向いた）、reward=-1
-        if (self.observation[0]-300)**2+(self.observation[1]-150)**2 <= 400:
-            return self.observation,np.float32(1),True,{}                       #成功（船が地球に到着した、地球の半径20)、reward=1
-        return self.observation,np.float32(0),False,{}                          #まだ飛行中、reward=0
+        for index in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]:
+            self.observation[index] = 0
+
+        # 注視点表示
+        self.observation[9] = obs_s
+
+        # 手掛かり刺激表示
+        if (obs_t > 0):
+            self.observation[obs_t] = 2
+
+        return self.observation,np.float32(reward),done,{}
 
     def close(self):
         self.task.exit()
@@ -51,17 +54,24 @@ class GazeEnv(gym.Env):
 env = GazeEnv()
 env.reset()
 
-model = Sequential([Flatten(input_shape=(1,9)),
-                    Dense(16,activation='relu'),
-                    Dense(16,activation='relu'),
-                    Dense(16,activation='relu'),
-                    Dense(9,activation='linear')])
-#model = load_model('game')                                                     #保存したモデルを呼び出す時に使用する
+reinforcement_learning = False
+
+if (reinforcement_learning):
+    model = Sequential([Flatten(input_shape=(1, 10)),
+                        Dense(16,activation='relu'),
+                        Dense(16,activation='relu'),
+                        Dense(16,activation='relu'),
+                        Dense(10,activation='linear')])
+else:
+    model = load_model('game_20220816')                                                     #保存したモデルを呼び出す時に使用する
 
 memory = SequentialMemory(limit=50000, window_length=1)
 policy = BoltzmannQPolicy()
-dqn = DQNAgent(model=model,nb_actions=9,gamma=0.99,memory=memory,nb_steps_warmup=100,target_model_update=1e-2,policy=policy)
+dqn = DQNAgent(model=model,nb_actions=10,gamma=0.99,memory=memory,nb_steps_warmup=100,target_model_update=1e-2,policy=policy)
 dqn.compile(Adam(lr=1e-3), metrics=['mae'])
-dqn.fit(env,nb_steps=100000,visualize=True,verbose=1)                           #visualize=Falseにすれば、画面描写をしなくなる
-dqn.model.save('game',overwrite=True)
+
+if (reinforcement_learning):
+    dqn.fit(env,nb_steps=100000,visualize=True,verbose=1)                           #visualize=Falseにすれば、画面描写をしなくなる
+    dqn.model.save('game',overwrite=True)
+
 dqn.test(env,nb_episodes=10,visualize=True)

@@ -157,7 +157,7 @@ class GazeTask(object):
         pygame.display.update()
 
         if (self.done):
-            time.sleep(2.5)
+            time.sleep(0.5)
 
     def motion(self, action) -> Tuple[int, int, float, bool]:
         """
@@ -176,6 +176,7 @@ class GazeTask(object):
             self.game_start = True
             self.time_start = time.perf_counter()
             self.target.set_direction()
+            self.reward = 1
 
         # 注視期間 (0.0 ~ 1.0)
 
@@ -183,14 +184,20 @@ class GazeTask(object):
         if (1.0 <= self.time_past and self.time_past <= 1.5):
             self.obs_targetp = self.target.direction
 
+            if (self.target.collide_pos((x, y))):
+                self.text = "手がかり刺激に目を逸らしました"
+                self.reward = 1
+                self.done = True
+
         # 遅延期間 (1.5 ~ 4.5)
 
         # 注視点表示 (~ 4.5)
         if (self.time_past < 4.5):
             self.obs_startp = 1
 
-            if (self.game_start and not self.start_point.collide_pos((x, y))):
+            if (self.game_start and not self.start_point.collide_pos((x, y)) and self.reward == 0):
                 self.text = "目を逸らしました"
+                self.reward = -1
                 self.done = True
                 
         # 終了
@@ -201,8 +208,8 @@ class GazeTask(object):
         # 反応期間 (4.5 ~ 5.0)
         else:
             if (self.target.collide_pos((x, y))):
-                self.text = "報酬 +1"
-                self.reward = 1
+                self.text = "報酬 +10"
+                self.reward = 10
                 self.done = True
 
         # 視線移動
