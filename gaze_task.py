@@ -162,8 +162,22 @@ class GazeTask(object):
     def motion(self, action) -> Tuple[int, int, float, bool]:
         """
         Retuens:
-            observation start point  [観察] 注視点表示 0, 1 (0: 表示なし)
+            observation start point  [観察] 注視点表示 0 / 1 (0: 表示なし)
+                ┏━━━┳━━━┳━━━┓
+                ┃   ┃   ┃   ┃
+                ┣━━━╋━━━╋━━━┫
+                ┃   ┃0/1┃   ┃
+                ┣━━━╋━━━╋━━━┫
+                ┃   ┃   ┃   ┃
+                ┗━━━┻━━━┻━━━┛
             observation target point [観察] 手掛かり刺激表示 0 ~ 8 (0: 表示なし)
+                ┏━━━┳━━━┳━━━┓
+                ┃ 1 ┃ 2 ┃ 3 ┃
+                ┣━━━╋━━━╋━━━┫
+                ┃ 4 ┃   ┃ 5 ┃
+                ┣━━━╋━━━╋━━━┫
+                ┃ 6 ┃ 7 ┃ 8 ┃
+                ┗━━━┻━━━┻━━━┛
             reward                   報酬
             done                     終了フラグ
         """

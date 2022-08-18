@@ -34,6 +34,23 @@ class GazeEnv(gym.Env):
         self.task.draw()
 
     def step(self, act):
+        """
+        Retuens:
+            observation 座標の位置と状態
+                座標の位置
+                    (0)
+                    ┏━━━┳━━━┳━━━┓
+                    ┃ 1 ┃ 2 ┃ 3 ┃
+                    ┣━━━╋━━━╋━━━┫
+                    ┃ 4 ┃(9)┃ 5 ┃
+                    ┣━━━╋━━━╋━━━┫
+                    ┃ 6 ┃ 7 ┃ 8 ┃
+                    ┗━━━┻━━━┻━━━┛
+                座標の状態
+                    0:表示なし
+                    1:注視点表示
+                    2:手掛かり刺激表示
+        """
         [obs_s, obs_t, reward, done] = self.task.motion(self.act_to_pos[act])
 
         for index in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]:
@@ -54,16 +71,17 @@ class GazeEnv(gym.Env):
 env = GazeEnv()
 env.reset()
 
-reinforcement_learning = False
+rl_data_load = False
+reinforcement_learning = True
 
-if (reinforcement_learning):
+if (rl_data_load):
+    model = load_model('game_20220816')                                                     #保存したモデルを呼び出す時に使用する
+else:
     model = Sequential([Flatten(input_shape=(1, 10)),
                         Dense(16,activation='relu'),
                         Dense(16,activation='relu'),
                         Dense(16,activation='relu'),
                         Dense(10,activation='linear')])
-else:
-    model = load_model('game_20220816')                                                     #保存したモデルを呼び出す時に使用する
 
 memory = SequentialMemory(limit=50000, window_length=1)
 policy = BoltzmannQPolicy()
