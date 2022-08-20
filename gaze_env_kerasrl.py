@@ -1,3 +1,4 @@
+from operator import truediv
 import pygame
 import math
 import numpy as np
@@ -11,8 +12,8 @@ from rl.agents.dqn import DQNAgent
 import gaze_task
 
 class GazeEnv(gym.Env):
-    def __init__(self):
-        self.task = gaze_task.GazeTask()
+    def __init__(self, visualize = True):
+        self.task = gaze_task.GazeTask(visualize)
 
         self.action_space = gym.spaces.Discrete(10)
         self.observation_space = gym.spaces.Box(low=np.int32([0, 0]),high=np.int32([9, 2]))
@@ -68,11 +69,12 @@ class GazeEnv(gym.Env):
     def close(self):
         self.task.exit()
 
-env = GazeEnv()
-env.reset()
-
 rl_data_load = False
 reinforcement_learning = True
+visual = True
+
+env = GazeEnv(visual)
+env.reset()
 
 if (rl_data_load):
     model = load_model('game_20220816')                                                     #保存したモデルを呼び出す時に使用する
@@ -89,7 +91,7 @@ dqn = DQNAgent(model=model,nb_actions=10,gamma=0.99,memory=memory,nb_steps_warmu
 dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 
 if (reinforcement_learning):
-    dqn.fit(env,nb_steps=100000,visualize=True,verbose=1)                           #visualize=Falseにすれば、画面描写をしなくなる
+    dqn.fit(env,nb_steps=100000,visualize=visual,verbose=1)                           #visualize=Falseにすれば、画面描写をしなくなる
     dqn.model.save('game',overwrite=True)
 
-dqn.test(env,nb_episodes=10,visualize=True)
+dqn.test(env,nb_episodes=10,visualize=visual)
