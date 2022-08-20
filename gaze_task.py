@@ -44,8 +44,7 @@ class TargetSprite(pygame.sprite.Sprite):
 
     手掛かり刺激
 
-    ディスプレイを9等分した大きさ
-    手掛かり刺激の表示はその中心
+    ディスプレイを9等分した中心以外に表示
     """
     def __init__(self, filename, size, display_size):
         pygame.sprite.Sprite.__init__(self)
@@ -72,12 +71,15 @@ class TargetSprite(pygame.sprite.Sprite):
 
     def set_direction(self):
         self.direction = random.randint(1, 8)
+        self.move()
 
-    def random_draw(self, surface: pygame.Surface):
+    def move(self):
         self.target_rect.x = self.direct_dic[self.direction][0]
         self.target_rect.y = self.direct_dic[self.direction][1]
         self.image_rect.x = self.target_rect.centerx - self.iw * 0.5
         self.image_rect.y = self.target_rect.centery - self.ih * 0.5
+
+    def draw(self, surface: pygame.Surface):
         surface.blit(self.image, self.image_rect)
 
     def collide_pos(self, pos) -> bool:
@@ -147,7 +149,7 @@ class GazeTask(object):
             self.start_point.draw(self.surface)
 
         if (self.obs_targetp > 0):
-            self.target.random_draw(self.surface)
+            self.target.draw(self.surface)
 
         if (self.done):
             txt_done = self.font.render(self.text, True, RGB_WHITE)
