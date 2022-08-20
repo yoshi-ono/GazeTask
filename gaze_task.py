@@ -113,6 +113,18 @@ class GazeTask(object):
         self.time_start = 0
         self.time_past = 0
 
+    def set_time_start(self):
+        if (self.use_time):
+            self.time_start = pygame.time.get_ticks()
+        else:
+            self.time_start = 0
+
+    def set_time_past(self):
+        if (self.use_time):
+            self.time_past = pygame.time.get_ticks() - self.time_start
+        else:
+            self.time_past += int(1000 / F_RATE)
+
     def _motion_init(self):
         self.obs_startp = 0
         self.obs_targetp = 0
@@ -190,16 +202,10 @@ class GazeTask(object):
         self._motion_init()
 
         if (self.game_start):
-            if (self.use_time):
-                self.time_past = pygame.time.get_ticks() - self.time_start
-            else:
-                self.time_past += 1000 / F_RATE
+            self.set_time_past()
         elif (self.start_point.collide_pos((x, y))):
             self.game_start = True
-            if (self.use_time):
-                self.time_start = pygame.time.get_ticks()
-            else:
-                self.time_start = 0
+            self.set_time_start()
             self.target.set_direction()
             self.reward = 1
 
