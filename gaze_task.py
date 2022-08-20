@@ -84,7 +84,7 @@ class TargetSprite(pygame.sprite.Sprite):
         return self.target_rect.collidepoint(pos)
 
 class GazeTask(object):
-    def __init__(self) -> None:
+    def __init__(self, human_senses = True) -> None:
         # 画面初期化
         pygame.init()
         self.surface = pygame.display.set_mode(SURFACE.size)
@@ -97,17 +97,21 @@ class GazeTask(object):
 
         self.font = pygame.font.Font('IPAexfont00401\ipaexg.ttf', 20)               # フォントの設定
 
-        # 時間オブジェクト生成
-        self.clock = pygame.time.Clock()
-
         self.score = 0
         self.assist = False
         self._motion_init()
 
+        if (human_senses):
+            self.clock = pygame.time.Clock()
+            self.use_time = True
+        else:
+            self.clock = None
+            self.use_time = False
+
     def reset(self):
         self.game_start = False
-        self.time_start = 0.0
-        self.time_past = 0.0
+        self.time_start = 0
+        self.time_past = 0
 
     def _motion_init(self):
         self.obs_startp = 0
@@ -117,8 +121,8 @@ class GazeTask(object):
         self.text = ""
 
     def draw(self):
-        # フレームレート設定
-        self.clock.tick(F_RATE)
+        if (self.use_time):
+            self.clock.tick(F_RATE)
 
         # 背景色設定
         self.surface.fill((0,0,0))
@@ -142,7 +146,7 @@ class GazeTask(object):
         self.surface.blit(txt_score, [440, 0])
 
         if (self.assist):
-            txt_time = self.font.render("{:.1f}".format(self.time_past), True, RGB_WHITE)
+            txt_time = self.font.render(str(self.time_past), True, RGB_WHITE)
             self.surface.blit(txt_time, [0, 0])
 
             pygame.draw.line(self.surface, RGB_WHITE, (0, 220), (660, 220), 1)
@@ -157,7 +161,8 @@ class GazeTask(object):
         pygame.display.update()
 
         if (self.done):
-            time.sleep(0.5)
+            if (self.use_time):
+                pygame.time.delay(500)
 
     def motion(self, action) -> Tuple[int, int, float, bool]:
         """
@@ -185,17 +190,23 @@ class GazeTask(object):
         self._motion_init()
 
         if (self.game_start):
-            self.time_past = time.perf_counter() - self.time_start
+            if (self.use_time):
+                self.time_past = pygame.time.get_ticks() - self.time_start
+            else:
+                self.time_past += 1000 / F_RATE
         elif (self.start_point.collide_pos((x, y))):
             self.game_start = True
-            self.time_start = time.perf_counter()
+            if (self.use_time):
+                self.time_start = pygame.time.get_ticks()
+            else:
+                self.time_start = 0
             self.target.set_direction()
             self.reward = 1
 
         # 注視期間 (0.0 ~ 1.0)
 
         # 手がかり刺激期間 (1.0 ~ 1.5)
-        if (1.0 <= self.time_past and self.time_past <= 1.5):
+        if (1000 <= self.time_past and self.time_past <= 1500):
             self.obs_targetp = self.target.direction
 
             if (self.target.collide_pos((x, y))):
@@ -206,7 +217,7 @@ class GazeTask(object):
         # 遅延期間 (1.5 ~ 4.5)
 
         # 注視点表示 (~ 4.5)
-        if (self.time_past < 4.5):
+        if (self.time_past < 4500):
             self.obs_startp = 1
 
             if (self.game_start and not self.start_point.collide_pos((x, y)) and self.reward == 0):
@@ -215,7 +226,7 @@ class GazeTask(object):
                 self.done = True
                 
         # 終了
-        elif (self.time_past > 5.0):
+        elif (self.time_past > 5000):
             self.text = "タイムオーバー"
             self.done = True
 
@@ -240,7 +251,7 @@ class GazeTask(object):
 
 
 def main():
-    gaze_task = GazeTask()
+    gaze_task = GazeTask(True)
     gaze_task.reset()
     (x, y) = (0, 0)
 
