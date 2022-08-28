@@ -7,7 +7,7 @@ import time
 
 # 定数扱い
 SURFACE = Rect(0, 0, 660, 660) # 画面サイズ(X軸,Y軸,横,縦)
-F_RATE  = 60                   # フレームレート
+F_RATE  = 10                   # フレームレート
 RGB_WHITE = (255, 255, 255)
 
 class BasicSprite(pygame.sprite.Sprite):
@@ -97,7 +97,7 @@ class GazeTask(object):
         self.gaze = BasicSprite("eye.png", 200, 200, (100, 50))
         self.target = TargetSprite("white.png", (20, 20), SURFACE.size)
 
-        self.font = pygame.font.Font('IPAexfont00401\ipaexg.ttf', 20)               # フォントの設定
+        self.font = pygame.font.Font('IPAexfont00401/ipaexg.ttf', 20)               # フォントの設定
 
         self.score = 0
         self.assist = False
@@ -116,21 +116,21 @@ class GazeTask(object):
         self.time_past = 0
 
     def set_time_start(self):
-        if (self.use_time):
-            self.time_start = pygame.time.get_ticks()
-        else:
-            self.time_start = 0
+        # if (self.use_time):
+        #     self.time_start = pygame.time.get_ticks()
+        # else:
+        self.time_start = 0
 
     def set_time_past(self):
-        if (self.use_time):
-            self.time_past = pygame.time.get_ticks() - self.time_start
-        else:
-            self.time_past += int(1000 / F_RATE)
+        # if (self.use_time):
+        #     self.time_past = pygame.time.get_ticks() - self.time_start
+        # else:
+        self.time_past += int(1000 / F_RATE)
 
     def _motion_init(self):
         self.obs_startp = 0
         self.obs_targetp = 0
-        self.reward = 0
+        self.reward = 1
         self.done = False
         self.text = ""
 
@@ -141,7 +141,7 @@ class GazeTask(object):
         # 背景色設定
         self.surface.fill((0,0,0))
 
-        if (not self.game_start):
+        if (not self.game_start and not self.done):
             txt_start = self.font.render("視線（マウスカーソル）を注視点に合わせたらスタートです。", True, RGB_WHITE)
             self.surface.blit(txt_start, [SURFACE.centerx - txt_start.get_width() * 0.5, SURFACE.centery - 50])
 
@@ -209,7 +209,8 @@ class GazeTask(object):
             self.game_start = True
             self.set_time_start()
             self.target.set_direction()
-            self.reward = 1
+        else:
+            self.reward = 0
 
         # 注視期間 (0.0 ~ 1.0)
 
@@ -219,7 +220,7 @@ class GazeTask(object):
 
             if (self.target.collide_pos((x, y))):
                 self.text = "手がかり刺激に目を逸らしました"
-                self.reward = 1
+                self.reward = 10
                 self.done = True
 
         # 遅延期間 (1.5 ~ 4.5)
@@ -228,7 +229,7 @@ class GazeTask(object):
         if (self.time_past < 4500):
             self.obs_startp = 1
 
-            if (self.game_start and not self.start_point.collide_pos((x, y)) and self.reward == 0):
+            if (self.game_start and not self.start_point.collide_pos((x, y)) and not self.done):
                 self.text = "目を逸らしました"
                 self.reward = -1
                 self.done = True
@@ -236,13 +237,14 @@ class GazeTask(object):
         # 終了
         elif (self.time_past > 5000):
             self.text = "タイムオーバー"
+            self.reward = -5 * F_RATE
             self.done = True
 
         # 反応期間 (4.5 ~ 5.0)
         else:
             if (self.target.collide_pos((x, y))):
-                self.text = "報酬 +10"
-                self.reward = 10
+                self.text = "報酬 +100"
+                self.reward = 100
                 self.done = True
 
         # 視線移動
