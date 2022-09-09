@@ -1,10 +1,16 @@
 import numpy as np
 import gym
-import gaze_task
+import threading
+from gaze_task import GazeTask
+from observation_window import ObservationWindow
 
 class GazeEnv(gym.Env):
     def __init__(self, visualize = True):
-        self.task = gaze_task.GazeTask(visualize)
+        self.obswin = ObservationWindow()
+        self.thread = threading.Thread(target=self.obswin.start)
+        self.thread.start()
+
+        self.task = GazeTask(visualize)
 
         self.action_space = gym.spaces.Discrete(10)
         ##self.observation_space = gym.spaces.Box(low=np.int32([0, 0]),high=np.int32([9, 2]))
@@ -25,6 +31,7 @@ class GazeEnv(gym.Env):
 
     def render(self):
         self.task.draw()
+        self.task.event_clear()
 
     def step(self, act):
         """
@@ -56,7 +63,15 @@ class GazeEnv(gym.Env):
         if (obs_t > 0):
             self.observation[obs_t] = 2
 
+        # 観察画面更新
+        self.obswin.value.set(reward)
+        for i in range(10):
+            self.obswin.pos_strvar[i].set(self.observation[i])
+
         return self.observation,np.float32(reward),done,{}
 
     def close(self):
         self.task.exit()
+
+        self.swin.quit()
+        self.thread.join()

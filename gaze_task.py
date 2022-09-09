@@ -7,7 +7,7 @@ import time
 
 # 定数扱い
 SURFACE = Rect(0, 0, 660, 660) # 画面サイズ(X軸,Y軸,横,縦)
-F_RATE  = 10                   # フレームレート
+F_RATE  = 20                   # フレームレート
 RGB_WHITE = (255, 255, 255)
 
 class BasicSprite(pygame.sprite.Sprite):
@@ -136,7 +136,8 @@ class GazeTask(object):
 
     def draw(self):
         if (self.use_time):
-            self.clock.tick(F_RATE)
+            #self.clock.tick(F_RATE)
+            self.clock.tick_busy_loop(F_RATE)
 
         # 背景色設定
         self.surface.fill((0,0,0))
@@ -172,11 +173,18 @@ class GazeTask(object):
         self.gaze.draw(self.surface)
 
         # 画面更新
+        #pygame.display.flip()
         pygame.display.update()
 
         if (self.done):
             if (self.use_time):
+                #pygame.time.wait(500)
                 pygame.time.delay(500)
+
+    def event_clear(self):
+        # for event in pygame.event.get():
+        #     pass
+        pygame.event.clear()
 
     def motion(self, action) -> Tuple[int, int, float, bool]:
         """
