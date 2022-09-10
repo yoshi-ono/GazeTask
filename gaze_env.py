@@ -53,7 +53,7 @@ class GazeEnv(gym.Env):
         """
         [obs_s, obs_t, reward, done] = self.task.motion(self.act_to_pos[act])
 
-        for index in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]:
+        for index in range(10):
             self.observation[index] = 0
 
         # 注視点表示
@@ -64,6 +64,7 @@ class GazeEnv(gym.Env):
             self.observation[obs_t] = 2
 
         # 観察画面更新
+        self.obswin.set_pos_color(act)
         self.obswin.value.set(reward)
         for i in range(10):
             self.obswin.pos_strvar[i].set(self.observation[i])
