@@ -16,7 +16,8 @@ class GazeEnv(gym.Env):
         self.task = gaze_task.GazeTask(visualize)
 
         self.action_space = gym.spaces.Discrete(10)
-        self.observation_space = gym.spaces.Box(low=np.int32([0, 0]),high=np.int32([9, 2]))
+        ##self.observation_space = gym.spaces.Box(low=np.int32([0, 0]),high=np.int32([9, 2]))
+        self.observation_space = gym.spaces.Box(low=0, high=2, shape=(10,), dtype=np.int32)
         self.reward_range = (-1,10)
 
         self.act_to_pos = { 0: (0, 0),
