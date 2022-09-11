@@ -99,7 +99,7 @@ class GazeTask(object):
 
         self.font = pygame.font.Font('IPAexfont00401/ipaexg.ttf', 20)               # フォントの設定
 
-        self.score = 0
+        self.total_score = 0
         self.assist = False
         self._motion_init()
 
@@ -130,8 +130,9 @@ class GazeTask(object):
     def _motion_init(self):
         self.obs_startp = 0
         self.obs_targetp = 0
-        self.reward = 1
+        self.score = 0
         self.done = False
+        self.status = "playing"
         self.text = ""
 
     def draw(self):
@@ -157,8 +158,8 @@ class GazeTask(object):
             self.surface.blit(txt_done, [SURFACE.centerx - txt_done.get_width() * 0.5, SURFACE.centery - 50])
 
         # スコア表示
-        txt_score = self.font.render("SCORE: " + str(self.score), True, RGB_WHITE)
-        self.surface.blit(txt_score, [440, 0])
+        txt_total_score = self.font.render("SCORE: " + str(self.total_score), True, RGB_WHITE)
+        self.surface.blit(txt_total_score, [440, 0])
 
         if (self.assist):
             txt_time = self.font.render(str(self.time_past), True, RGB_WHITE)
@@ -186,7 +187,7 @@ class GazeTask(object):
         #     pass
         pygame.event.clear()
 
-    def motion(self, action) -> Tuple[int, int, float, bool]:
+    def motion(self, action) -> Tuple[int, int, float, bool, str]:
         """
         Retuens:
             observation start point  [観察] 注視点表示 0 / 1 (0: 表示なし)
@@ -205,8 +206,9 @@ class GazeTask(object):
                 ┣━━━╋━━━╋━━━┫
                 ┃ 6 ┃ 7 ┃ 8 ┃
                 ┗━━━┻━━━┻━━━┛
-            reward                   報酬
+            score                    点数
             done                     終了フラグ
+            status                   状態
         """
         (x, y) = action
         self._motion_init()
@@ -218,7 +220,7 @@ class GazeTask(object):
             self.set_time_start()
             self.target.set_direction()
         else:
-            self.reward = 0
+            self.status = "ready"
 
         # 注視期間 (0.0 ~ 1.0)
 
@@ -228,7 +230,8 @@ class GazeTask(object):
 
             if (self.target.collide_pos((x, y))):
                 self.text = "手がかり刺激に目を逸らしました"
-                self.reward = 10
+                self.score = 10
+                self.status = "look_away"
                 self.done = True
 
         # 遅延期間 (1.5 ~ 4.5)
@@ -239,29 +242,30 @@ class GazeTask(object):
 
             if (self.game_start and not self.start_point.collide_pos((x, y)) and not self.done):
                 self.text = "目を逸らしました"
-                self.reward = -1
+                self.status = "look_away"
                 self.done = True
                 
         # 終了
         elif (self.time_past > 5000):
             self.text = "タイムオーバー"
-            self.reward = -5 * F_RATE
+            self.status = "time_over"
             self.done = True
 
         # 反応期間 (4.5 ~ 5.0)
         else:
             if (self.target.collide_pos((x, y))):
-                self.text = "報酬 +100"
-                self.reward = 100
+                self.text = "クリアー！ 100 点"
+                self.score = 100
+                self.status = "clear"
                 self.done = True
 
         # 視線移動
         self.gaze.move(self.surface, (x, y))
 
-        # スコア（報酬計）
-        self.score += self.reward
+        # スコア計
+        self.total_score += self.score
 
-        return [self.obs_startp, self.obs_targetp, self.reward, self.done]
+        return [self.obs_startp, self.obs_targetp, self.score, self.done, self.status]
 
     def exit(self):
         pygame.quit()
@@ -274,7 +278,7 @@ def main():
     (x, y) = (0, 0)
 
     while True:
-        [obs_s, obs_t, reward, done] = gaze_task.motion((x, y))
+        [obs_s, obs_t, score, done, status] = gaze_task.motion((x, y))
 
         gaze_task.draw()
 

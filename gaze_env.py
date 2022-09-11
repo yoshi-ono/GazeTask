@@ -1,7 +1,7 @@
 import numpy as np
 import gym
 import threading
-from gaze_task import GazeTask
+from gaze_task import GazeTask, F_RATE
 from observation_window import ObservationWindow
 
 class GazeEnv(gym.Env):
@@ -51,7 +51,7 @@ class GazeEnv(gym.Env):
                     1:注視点表示
                     2:手掛かり刺激表示
         """
-        [obs_s, obs_t, reward, done] = self.task.motion(self.act_to_pos[act])
+        [obs_s, obs_t, score, done, status] = self.task.motion(self.act_to_pos[act])
 
         for index in range(10):
             self.observation[index] = 0
@@ -62,6 +62,21 @@ class GazeEnv(gym.Env):
         # 手掛かり刺激表示
         if (obs_t > 0):
             self.observation[obs_t] = 2
+
+        # 報酬
+        reward = 0
+        if (status == "playing"):
+            reward = 1
+        elif (done):
+            if (status == "clear"):
+                reward = score
+            elif (status == "time_over"):
+                reward = -5 * F_RATE
+            elif (status == "look_away"):
+                if (score > 0):
+                    reward = score
+                else:
+                    reward = -1
 
         # 観察画面更新
         self.obswin.set_pos_color(act)
