@@ -4,7 +4,7 @@ import threading
 from gaze_task import GazeTask, F_RATE
 from observation_window import ObservationWindow
 
-class GazeEnv(gym.Env):
+class GazeEnvWM3(gym.Env):
     def __init__(self, visualize = True):
         self.obswin = ObservationWindow()
         self.thread = threading.Thread(target=self.obswin.start)
@@ -13,8 +13,7 @@ class GazeEnv(gym.Env):
         self.task = GazeTask(visualize)
 
         self.action_space = gym.spaces.Discrete(10)
-        ##self.observation_space = gym.spaces.Box(low=np.int32([0, 0]),high=np.int32([9, 2]))
-        self.observation_space = gym.spaces.Box(low=0, high=2, shape=(10,), dtype=np.int32)
+        self.observation_space = gym.spaces.Box(low=0, high=2, shape=(20,), dtype=np.int32)
         self.reward_range = (-100,100)
 
         self.act_to_pos = { 0: (0, 0),
@@ -26,7 +25,7 @@ class GazeEnv(gym.Env):
     def reset(self):
         self.task.reset()
 
-        self.observation = np.int32([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        self.observation = np.zeros(20, dtype=np.int32)
         return self.observation
 
     def render(self):
@@ -58,14 +57,18 @@ class GazeEnv(gym.Env):
 
         # 注視点表示
         self.observation[9] = obs_s
+        if (self.observation[19] < obs_s):
+            self.observation[19] = obs_s
 
         # 手掛かり刺激表示
         if (obs_t > 0):
             self.observation[obs_t] = 2
+            if (self.observation[obs_t + 10] < 2):
+                self.observation[obs_t + 10] = 2
 
         # 報酬
         reward = 0
-        if (status == "on_center"):
+        if (status == "playing"):
             reward = 1
         elif (done):
             if (status == "clear"):
@@ -83,6 +86,7 @@ class GazeEnv(gym.Env):
         self.obswin.value.set(reward)
         for i in range(10):
             self.obswin.pos_strvar[i].set(self.observation[i])
+            self.obswin.wm_strvar[i].set(self.observation[i + 10])
 
         return self.observation,np.float32(reward),done,{}
 

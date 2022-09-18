@@ -11,11 +11,16 @@ class ObservationWindow:
         self.running = True
         self.window = tkinter.Tk()
         self.window.title("OBSERVATION")
-        self.window.geometry('320x350')
+        self.window.geometry('320x520')
 
         # フレーム１
         self.frame1 = tkinter.Frame(self.window)
         self.frame1.pack(pady=20)
+
+        self.label_status = tkinter.Label(self.frame1,
+                                text="STATUS",
+                                font=("", 20, "bold"))
+        self.label_status.pack()
 
         #self.label = tkinter.Label(self.frame1, text="Reward:", relief="sunken", bg="red", width=10)
         self.label = tkinter.Label(self.frame1,
@@ -61,6 +66,35 @@ class ObservationWindow:
 
         self.pos_entry[9].grid(row = 2, column = 1)
 
+        # フレーム ワーキングメモリ
+        self.frame_wm = tkinter.Frame(self.window)
+        self.frame_wm.pack(pady=20)
+
+        self.wm_strvar = []
+        self.wm_entry = []
+        for _ in range(10):
+            strvar = tkinter.StringVar()
+            self.wm_strvar.append(strvar)
+            entry = tkinter.Entry(self.frame_wm,
+                                textvariable=strvar,
+                                width=3,
+                                font=("", 20, "bold"),
+                                justify="center")
+            self.wm_entry.append(entry)
+
+        self.wm_entry[0].grid(row = 0, column = 0)
+
+        self.wm_entry[1].grid(row = 1, column = 0)
+        self.wm_entry[2].grid(row = 1, column = 1)
+        self.wm_entry[3].grid(row = 1, column = 2)
+        self.wm_entry[4].grid(row = 2, column = 0)
+        self.wm_entry[5].grid(row = 2, column = 2)
+        self.wm_entry[6].grid(row = 3, column = 0)
+        self.wm_entry[7].grid(row = 3, column = 1)
+        self.wm_entry[8].grid(row = 3, column = 2)
+
+        self.wm_entry[9].grid(row = 2, column = 1)
+
         self.event.set()
 
         self.window.after(1000, self._check_to_quit)
@@ -74,9 +108,12 @@ class ObservationWindow:
         for _ in range(10):
             del self.pos_strvar[0]
             del self.pos_entry[0]
+            del self.wm_strvar[0]
+            del self.wm_entry[0]
 
         del self.frame1
         del self.frame2
+        del self.frame_wm
         del self.window
 
     def _check_to_quit(self):

@@ -240,10 +240,13 @@ class GazeTask(object):
         if (self.time_past < 4500):
             self.obs_startp = 1
 
-            if (self.game_start and not self.start_point.collide_pos((x, y)) and not self.done):
-                self.text = "目を逸らしました"
-                self.status = "look_away"
-                self.done = True
+            if (self.game_start and not self.done):
+                if (self.start_point.collide_pos((x, y))):
+                    self.status = "on_center"
+                else:
+                    self.text = "目を逸らしました"
+                    self.status = "look_away"
+                    self.done = True
                 
         # 終了
         elif (self.time_past > 5000):
@@ -253,6 +256,8 @@ class GazeTask(object):
 
         # 反応期間 (4.5 ~ 5.0)
         else:
+            self.status = "reaction"
+            
             if (self.target.collide_pos((x, y))):
                 self.text = "クリアー！ 100 点"
                 self.score = 100

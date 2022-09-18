@@ -4,7 +4,7 @@ import threading
 from gaze_task import GazeTask, F_RATE
 from observation_window import ObservationWindow
 
-class GazeEnv(gym.Env):
+class GazeEnvWM0(gym.Env):
     def __init__(self, visualize = True):
         self.obswin = ObservationWindow()
         self.thread = threading.Thread(target=self.obswin.start)
@@ -14,7 +14,7 @@ class GazeEnv(gym.Env):
 
         self.action_space = gym.spaces.Discrete(10)
         ##self.observation_space = gym.spaces.Box(low=np.int32([0, 0]),high=np.int32([9, 2]))
-        self.observation_space = gym.spaces.Box(low=0, high=2, shape=(10,), dtype=np.int32)
+        self.observation_space = gym.spaces.Box(low=0, high=1, shape=(10,), dtype=np.int32)
         self.reward_range = (-100,100)
 
         self.act_to_pos = { 0: (0, 0),
@@ -27,6 +27,7 @@ class GazeEnv(gym.Env):
         self.task.reset()
 
         self.observation = np.int32([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        self.wm = 0
         return self.observation
 
     def render(self):
@@ -61,25 +62,35 @@ class GazeEnv(gym.Env):
 
         # 手掛かり刺激表示
         if (obs_t > 0):
-            self.observation[obs_t] = 2
+            self.observation[obs_t] = 1
+
+            if (self.wm == 0):
+                self.wm = obs_t
+        
+        # WM
+        if (obs_s == 0 and self.wm > 0):
+            self.observation[self.wm] = 1
 
         # 報酬
         reward = 0
         if (status == "on_center"):
             reward = 1
+        elif (status == "ready" or status == "reaction"):
+            reward = -1
         elif (done):
             if (status == "clear"):
-                reward = score
+                reward = 100
             elif (status == "time_over"):
-                reward = -5 * F_RATE
+                reward = -100
             elif (status == "look_away"):
                 if (score > 0):
-                    reward = score
+                    reward = 50
                 else:
                     reward = -1
 
         # 観察画面更新
         self.obswin.set_pos_color(act)
+        self.obswin.label_status["text"] = status
         self.obswin.value.set(reward)
         for i in range(10):
             self.obswin.pos_strvar[i].set(self.observation[i])
