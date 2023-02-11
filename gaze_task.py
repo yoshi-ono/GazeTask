@@ -7,7 +7,7 @@ import time
 
 # 定数扱い
 SURFACE = Rect(0, 0, 660, 660) # 画面サイズ(X軸,Y軸,横,縦)
-F_RATE  = 20                   # フレームレート
+F_RATE  = 30                   # フレームレート
 RGB_WHITE = (255, 255, 255)
 
 class BasicSprite(pygame.sprite.Sprite):
@@ -162,7 +162,7 @@ class GazeTask(object):
         self.surface.blit(txt_total_score, [440, 0])
 
         if (self.assist):
-            txt_time = self.font.render(str(self.time_past), True, RGB_WHITE)
+            txt_time = self.font.render(str(round(self.time_past * 0.001, 1)), True, RGB_WHITE)
             self.surface.blit(txt_time, [0, 0])
 
             pygame.draw.line(self.surface, RGB_WHITE, (0, 220), (660, 220), 1)
@@ -284,6 +284,7 @@ def main():
 
     while True:
         [obs_s, obs_t, score, done, status] = gaze_task.motion((x, y))
+        #print(status)
 
         gaze_task.draw()
 

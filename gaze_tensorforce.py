@@ -1,9 +1,9 @@
 from tensorforce import Agent
 from tensorforce.environments import OpenAIGym
-from gaze_env_wm0 import GazeEnvWM0
+from gaze_env_wm0 import GazeEnvWM0 as GazeEnv
 
 def main():
-    environment = OpenAIGym.create(environment=GazeEnvWM0, max_episode_timesteps=500, visualize=True)
+    environment = OpenAIGym.create(environment=GazeEnv, max_episode_timesteps=500, visualize=True)
     #environment = wrappers.Monitor(environment, 'tmp', force=True)
 
     agent = Agent.create(agent='configs/ppo.json', environment=environment)

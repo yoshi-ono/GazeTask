@@ -69,6 +69,7 @@ class GazeEnvWM0(gym.Env):
         
         # WM
         if (obs_s == 0 and self.wm > 0):
+        #if (self.wm > 0):
             self.observation[self.wm] = 1
 
         # 報酬

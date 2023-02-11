@@ -68,16 +68,18 @@ class GazeEnvWM1(gym.Env):
 
         # 報酬
         reward = 0
-        if (status == "playing"):
+        if (status == "on_center"):
             reward = 1
+        elif (status == "ready" or status == "reaction"):
+            reward = -1
         elif (done):
             if (status == "clear"):
-                reward = score
+                reward = 100
             elif (status == "time_over"):
-                reward = -200
+                reward = -100
             elif (status == "look_away"):
                 if (score > 0):
-                    reward = score
+                    reward = 50
                 else:
                     reward = -1
 
